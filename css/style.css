@@ -1,0 +1,11 @@
+@font-face {
+    font-family: 'Cascadia Mono';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 400;
+    src: url('../font/CascadiaMono.woff2') format('woff2');
+}
+
+#console_log_box .gr-text-input {
+    font-family: 'Cascadia Mono', monospace;
+}
