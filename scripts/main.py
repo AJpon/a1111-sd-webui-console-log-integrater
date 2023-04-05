@@ -1,8 +1,11 @@
 import gradio as gr
 import sys
 import io
+from pathlib import Path
 from fastapi import FastAPI
 from modules import scripts, script_callbacks, shared
+
+import warnings
 
 # Gradioに、Pythonの標準出力を表示するUIを追加する
 
@@ -23,7 +26,7 @@ def init(demo: gr.Blocks, app: FastAPI) -> None:
 # Pythonの標準出力をキャプチャーする
 def capture_stdout() -> io.StringIO:
     global stdout_captured
-    print("[console log integrater] start capture")
+    print("[console log integrater] start stdout capture")
     sys.stdout = stdout_captured
     return stdout_captured
 
@@ -33,8 +36,8 @@ def release_stdout() -> None:
 
 
 def capture_stderr() -> io.StringIO:
-    global stderr_captured
-    print("[console log integrater] start capture")
+    global stdout_captured
+    print("[console log integrater] start stderr capture")
     sys.stderr = stdout_captured
     return stdout_captured
 
@@ -47,9 +50,9 @@ def update_stdout() -> None:
     global stdout_captured
     global stdout_val
     # print("[console log integrater] sys.stdout == stdout_captured: ",sys.stdout == stdout_captured)
-    if sys.stdout != stdout_captured:
-        # Warning("[console log integrater] sys.stdout != stdout_captured")
-        capture_stdout()
+    # if sys.stdout != stdout_captured:
+    # Warning("[console log integrater] sys.stdout != stdout_captured")
+    # capture_stdout()
     # print("[console log integrater] update")
 
     # stdout_val = stdout_captured.getvalue()
@@ -71,6 +74,7 @@ def get_stdout_val() -> str:
 def stdout2html(stdout_val: str) -> str:
     html: str = stdout_val.replace("\n", "<br>")
     # ANSI escape to HTML tags
+    html = html.replace("\033", "\x1b")
     html = html.replace("\x1b[0m", "</span>")
     html = html.replace("\x1b[1m", "<span style='font-weight: bold;'>")
     html = html.replace("\x1b[2m", "<span style='font-weight: lighter;'>")
@@ -99,19 +103,38 @@ def stdout2html(stdout_val: str) -> str:
 
 
 def on_ui_tabs():
+    def add_css(html="") -> str:
+        dir_path: str = Path(__file__).resolve().parent.as_posix() + "/"
+        return "<style>" + open(dir_path + "../css/style.css", "r").read() + "</style>" + html
     global stdout_val
-    with gr.Blocks(analytics_enabled=False, css="../css/style.css") as console_log:
-        with gr.Column(scale=9):
-            with gr.Box():
-                stdout_box = gr.Textbox(stdout_val, label="Python standard output", interactive=False,
-                                        lines=12, elem_id="console_log_box")
-        with gr.Column(scale=1, min_width=120, visible=True):
-            update_btn = gr.Button("Update", variant='primary')
-            update_btn.click(get_stdout_val,
-                             inputs=None,
-                             outputs=stdout_box)
-        with gr.Column(visible=False) as hidden_items:
-            pass
+    with gr.Blocks(analytics_enabled=False) as console_log:
+        with gr.Row():
+            with gr.Column(scale=9):
+                with gr.Box():
+                    stdout_box = gr.Textbox(stdout_val, label="Python standard output", interactive=False,
+                                            lines=20, elem_id="console_log_box")
+                    # with gr.Row():
+                    #     with gr.Column(scale=9):
+                    #         stdout_html = gr.HTML(add_css(stdout2html(stdout_val)),
+                    #                               Label="Python standard output (html)",
+                    #                               elem_id="console_log_box")
+                    #     with gr.Column(scale=1, min_width=120):
+                    #         update_btn = gr.Button("Update", variant='primary')
+                    #         update_btn.click(lambda: add_css(stdout2html(stdout_val)),
+                    #                          inputs=None,
+                    #                          outputs=stdout_html)
+            with gr.Column(scale=1, min_width=120, visible=True):
+                update_btn = gr.Button("Update", variant='primary')
+                update_btn.click(get_stdout_val,
+                                 inputs=None,
+                                 outputs=stdout_box)
+                test_btn = gr.Button("Test msg")
+                test_btn.click(lambda: [print("[console log integrater] test msg to stdout"), warnings.warn(Warning("[console log integrater] test msg to stderr"))],
+                               inputs=None,
+                               outputs=None)
+            with gr.Column(visible=False) as hidden_items:
+                pass
+
         # console_log.load(fn=hoge,
         #                  inputs=None,
         #                  outputs=stdout_box,
