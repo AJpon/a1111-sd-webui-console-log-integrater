@@ -75,15 +75,14 @@ def stdout2html(stdout_val: str) -> str:
     stdout_rstr = repr(stdout_val)[1:-1]
     html: str = stdout_rstr.replace(r"\n", "<br>")
     # ANSI escape to HTML tags
-    html = html.replace(r"\033", r"\x1b")
+    html = html.replace("\033", "\x1b")
     html = html.replace(r"\x1b[0m", "</span>")
     html = html.replace(r"\x1b[1m", "<span style='font-weight: bold;'>")
     html = html.replace(r"\x1b[2m", "<span style='font-weight: lighter;'>")
-    html = html.replace(r"\x1b[3m", "<span style='font-style: italic;'>")
     html = html.replace(r"\x1b[4m", "<span style='text-decoration: underline;'>")
-    html = html.replace(r"\x1b[5m", "<span style='text-decoration: blink;'>")
     html = html.replace(r"\x1b[7m", "<span style='text-decoration: overline;'>")
-    html = html.replace(r"\x1b[8m", "<span style='text-decoration: line-through;'>")
+    html = html.replace(r"\x1b[24m", "<span style='text-decoration: none;'>")
+    html = html.replace(r"\x1b[27m", "<span style='text-decoration: none;'>")
     html = html.replace(r"\x1b[30m", "<span style='color: black;'>")
     html = html.replace(r"\x1b[31m", "<span style='color: red;'>")
     html = html.replace(r"\x1b[32m", "<span style='color: green;'>")
@@ -120,51 +119,44 @@ def stdout2html(stdout_val: str) -> str:
 
 
 def on_ui_tabs():
-    def add_css(html="") -> str:
-        dir_path: str = Path(__file__).resolve().parent.as_posix() + "/"
-        return "<style>" + open(dir_path + "../css/style.css", "r").read() + "</style>" + html
     global stdout_val
+    stdout_val = ""
     with gr.Blocks(analytics_enabled=False) as console_log:
-        with gr.Row():
-            with gr.Column(scale=9):
-                with gr.Box():
-                    gr.HTML(add_css())
-                    stdout_box = gr.Textbox(stdout_val, label="Python standard output", interactive=False,
-                                            lines=20, elem_id="console_log_box")
-            with gr.Column(scale=1, min_width=120, visible=True):
-                update_btn = gr.Button("Update", variant='primary')
-                update_btn.click(get_stdout_val,
-                                 inputs=None,
-                                 outputs=stdout_box)
-                test_btn = gr.Button("Test msg")
-                test_btn.click(lambda: [print("[console log integrater] test msg to stdout"), print("[console log integrater] test msg to stderr", file=sys.stderr)],
-                               inputs=None,
-                               outputs=None)
         # with gr.Row():
         #     with gr.Column(scale=9):
         #         with gr.Box():
-        #             # Add label
-        #             gr.HTML("""
-        #             <span class='text-gray-500 text-[0.855rem] mb-2 block relative z-40'>
-        #                 Python standard output (html)
-        #             </span>
-        #             """)
-
-        #             with gr.Box():
-        #                 # Add html and css
-        #                 span_tag: str = "<span style='font-family: 'Cascadia Mono'; monospace; overflow-y: scroll; height: 500px; min-height: 300px;'>"
-        #                 end_span_tag: str = "</span>"
-        #                 raw_html: str = stdout2html(span_tag + stdout_val + end_span_tag)
-        #                 print(raw_html)
-        #                 stdout_html = gr.HTML(raw_html,
-        #                                       Label="Python standard output (html)",
-        #                                       show_label=True,
-        #                                       elem_id="console_log_box")
+        #             stdout_box = gr.Textbox(stdout_val, label="Python standard output", interactive=False,
+        #                                     lines=20, elem_id="console_log_box")
         #     with gr.Column(scale=1, min_width=120, visible=True):
-        #         test_html_btn = gr.Button("Test html Output", variant='primary')
-        #         test_html_btn.click(lambda: stdout2html(stdout_val),
-        #                             inputs=None,
-        #                             outputs=stdout_html)
+        #         update_btn = gr.Button("Update", variant='primary')
+        #         update_btn.click(get_stdout_val,
+        #                          inputs=None,
+        #                          outputs=stdout_box)
+        #         test_btn = gr.Button("Test msg")
+        #         test_btn.click(lambda: [print("[console log integrater] test msg to stdout"), print("[console log integrater] test msg to stderr", file=sys.stderr)],
+        #                        inputs=None,
+        #                        outputs=None)
+        with gr.Row():
+            def update_html(val: str) -> str:
+                span_tag: str = "<div style=\"overflow-y: scroll; min-height: 300px; resize: vertical; background: #1f2937; padding: 10px;\">"
+                end_span_tag: str = "</div>"
+                raw_html: str = stdout2html(span_tag + val + end_span_tag)
+                return raw_html
+            with gr.Column(scale=9):
+                with gr.Box():
+                    # Add label
+                    gr.HTML("<span>Python standard output</span>")
+                    with gr.Box():
+                        # Add html and css
+                        stdout_html = gr.HTML(update_html(""),
+                                              Label="Python standard output",
+                                              show_label=True,
+                                              elem_id="console_log_box")
+            with gr.Column(scale=1, min_width=120, visible=True):
+                test_html_btn = gr.Button("Update", variant='primary')
+                test_html_btn.click(lambda: update_html(get_stdout_val()),
+                                    inputs=None,
+                                    outputs=stdout_html)
         with gr.Row(visible=False) as hidden_items:
             pass
 
