@@ -1,6 +1,7 @@
 import gradio as gr
 import sys
 import io
+import re
 from pathlib import Path
 from fastapi import FastAPI
 from modules import scripts, script_callbacks, shared
@@ -74,13 +75,21 @@ def get_stdout_val() -> str:
 def stdout2html(stdout_val: str) -> str:
     stdout_rstr = repr(stdout_val)[1:-1]
     html: str = stdout_rstr.replace(r"\n", "<br>")
-    # ANSI escape to HTML tags
+    # 4bit ANSI escape to 5bit ANSI escape
     html = html.replace("\033", "\x1b")
+    # Convert ANSI escape containing parameter delimiters to ANSI escape sequences without parameter delimiters
+    ptn = re.compile(r"\\x1b\[(\d+;)*\d+m")
+    html = ptn.sub(lambda m: m.group().replace(";", r"m\x1b["), html)
+    # ANSI escape to HTML tags
     html = html.replace(r"\x1b[0m", "</span>")
-    html = html.replace(r"\x1b[1m", "<span style='font-weight: bold;'>")
-    html = html.replace(r"\x1b[2m", "<span style='font-weight: lighter;'>")
-    html = html.replace(r"\x1b[4m", "<span style='text-decoration: underline;'>")
-    html = html.replace(r"\x1b[7m", "<span style='text-decoration: overline;'>")
+    # html = html.replace(r"\x1b[1m", "<span style='font-weight: bold;'>")
+    # html = html.replace(r"\x1b[2m", "<span style='font-weight: lighter;'>")
+    # html = html.replace(r"\x1b[3m", "<span style='font-style: italic;'>")
+    # html = html.replace(r"\x1b[4m", "<span style='text-decoration: underline;'>")
+    # html = html.replace(r"\x1b[5m", "<span style='text-decoration: blink;'>")
+    # html = html.replace(r"\x1b[6m", "<span style='text-decoration: blink;'>")
+    # html = html.replace(r"\x1b[7m", "<span style='text-decoration: overline;'>")
+    html = re.sub(r"\\x1b\[[1-7]m", "<span>", html)
     html = html.replace(r"\x1b[24m", "<span style='text-decoration: none;'>")
     html = html.replace(r"\x1b[27m", "<span style='text-decoration: none;'>")
     html = html.replace(r"\x1b[30m", "<span style='color: black;'>")
@@ -91,6 +100,7 @@ def stdout2html(stdout_val: str) -> str:
     html = html.replace(r"\x1b[35m", "<span style='color: magenta;'>")
     html = html.replace(r"\x1b[36m", "<span style='color: cyan;'>")
     html = html.replace(r"\x1b[37m", "<span style='color: white;'>")
+    html = html.replace(r"\x1b[38m", "<span style='color: gray;'>")
     html = html.replace(r"\x1b[40m", "<span style='background-color: black;'>")
     html = html.replace(r"\x1b[41m", "<span style='background-color: red;'>")
     html = html.replace(r"\x1b[42m", "<span style='background-color: green;'>")
@@ -115,6 +125,11 @@ def stdout2html(stdout_val: str) -> str:
     html = html.replace(r"\x1b[105m", "<span style='background-color: lightmagenta;'>")
     html = html.replace(r"\x1b[106m", "<span style='background-color: lightcyan;'>")
     html = html.replace(r"\x1b[107m", "<span style='background-color: lightwhite;'>")
+    html = html.replace(r"\x1b[114m", "<span style='background-color: lightred;'>")
+    html = html.replace(r"\x1b[237m", "<span style='color: gray;'>")
+    html = html.replace(r"\x1b[249m", "<span style='color: gray;'>")
+    # double backslash to single backslash
+    html = html.replace("\\\\", "\\")
     return html
 
 
@@ -138,7 +153,7 @@ def on_ui_tabs():
         #                        outputs=None)
         with gr.Row():
             def update_html(val: str) -> str:
-                span_tag: str = "<div style=\"overflow-y: scroll; min-height: 300px; resize: vertical; background: #1f2937; padding: 10px;\">"
+                span_tag: str = "<div style=\"overflow-y: scroll; min-height: 300px; resize: vertical; background: #4d4d4f; padding: 10px;\">"
                 end_span_tag: str = "</div>"
                 raw_html: str = stdout2html(span_tag + val + end_span_tag)
                 return raw_html
